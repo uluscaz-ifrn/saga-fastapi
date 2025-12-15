@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  inscricoes:
+    build: ./inscricoes-service
+    ports:
+      - "8001:8000"
+    depends_on:
+      - rabbitmq
+
+  vagas:
+    build: ./vagas-service
+    ports:
+      - "8002:8000"
+    depends_on:
+      - rabbitmq
+
+  notificacoes:
+    build: ./notificacoes-service
+    ports:
+      - "8003:8000"
+    depends_on:
+      - rabbitmq
