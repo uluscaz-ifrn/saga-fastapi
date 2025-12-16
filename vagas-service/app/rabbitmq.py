@@ -1,4 +1,6 @@
 import pika, json, threading
+from .database import SessionLocal
+from .models import Vaga
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
 channel = connection.channel()
@@ -10,16 +12,27 @@ channel.queue_bind(exchange="saga", queue=queue)
 
 def callback(ch, method, properties, body):
     event = json.loads(body)
+    db = SessionLocal()
 
     if event.get("tipo") == "inscricao_criada":
-        if event.get("evento_id") == 99:
+        evento_id = event["evento_id"]
+        vaga = db.query(Vaga).get(evento_id)
+
+        if not vaga:
+            vaga = Vaga(evento_id=evento_id, total=5, ocupadas=0)
+            db.add(vaga)
+            db.commit()
+
+        if vaga.ocupadas < vaga.total:
+            vaga.ocupadas += 1
+            db.commit()
             channel.basic_publish(exchange="saga", routing_key="", body=json.dumps({
-                "tipo": "vaga_reserva_falhou",
+                "tipo": "vaga_reservada",
                 "inscricao_id": event["inscricao_id"]
             }))
         else:
             channel.basic_publish(exchange="saga", routing_key="", body=json.dumps({
-                "tipo": "vaga_reservada",
+                "tipo": "vaga_reserva_falhou",
                 "inscricao_id": event["inscricao_id"]
             }))
 
